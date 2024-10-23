@@ -1,9 +1,8 @@
-from loaddata import loadData
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-def preProcess():
+def preProcess(df_train, df_test):
     categories = {
         'workclass': ['Private', 'Self-emp-not-inc', 'Self-emp-inc', 'Federal-gov', 'Local-gov', 
                       'State-gov', 'Without-pay', 'Never-worked'],
@@ -32,8 +31,6 @@ def preProcess():
                            'Yugoslavia', 'El-Salvador', 'Trinadad&Tobago', 
                            'Peru', 'Hong', 'Holand-Netherlands']
     }
-
-    df_train, df_test = loadData()
     
     df_train.replace('?', np.nan, inplace=True)
 
@@ -55,6 +52,3 @@ def preProcess():
     df_test_encoded[continuous_cols] = scaler.transform(df_test_encoded[continuous_cols])
 
     return df_train_encoded, df_test_encoded
-
-if __name__ == '__main__':
-    preProcess()
