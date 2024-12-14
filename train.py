@@ -41,18 +41,48 @@ def randomForest(X_train, y_train):
 
     return grid_search.best_estimator_
 
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.metrics import roc_auc_score, classification_report
+import numpy as np
+
 def GradientBoosting(X_train, y_train):
-    param_grid = {
-        'n_estimators': [200],
-        'learning_rate': [0.2],
-        'max_depth': [4],
+    param_dist = {
+        'n_estimators': [300],  # Increased range
+        'learning_rate': [0.1, 0.2],
+        'max_depth': [3, 4],
+        'subsample': [1.0],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4],
+        'max_features': ['sqrt', 'log2', None],  # Add max_features for random feature selection
     }
 
-    gb_model = GradientBoostingClassifier(random_state=42, n_estimators=200, learning_rate=0.2, max_depth=4)
+    gb_model = GradientBoostingClassifier(random_state=42)
 
-    gb_model.fit(X_train, y_train)
+    # Set up RandomizedSearchCV
+    randomized_search = RandomizedSearchCV(
+        estimator=gb_model, 
+        param_distributions=param_dist,
+        scoring='roc_auc', 
+        cv=5, 
+        n_jobs=-1, 
+        verbose=1,
+        n_iter=400,  # Number of parameter settings sampled
+        random_state=42
+    )
 
-    return gb_model
+    # Fit the randomized search
+    randomized_search.fit(X_train, y_train)
+
+    # Retrieve the best model and parameters
+    best_model = randomized_search.best_estimator_
+    best_params = randomized_search.best_params_
+    best_score = randomized_search.best_score_
+
+    print(f'Best Parameters: {best_params}')
+    print(f'Best Cross-Validation ROC AUC Score: {best_score:.4f}')
+
+    return best_model
 
 def train(df_train, df_test, modelType = 'DecisionTree'):
     X_train = df_train.drop(columns=['income>50K'])

@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 def preProcess(df_train, df_test):
     categories = {
         'workclass': ['Private', 'Self-emp-not-inc', 'Self-emp-inc', 'Federal-gov', 'Local-gov', 
@@ -31,12 +34,51 @@ def preProcess(df_train, df_test):
                            'Yugoslavia', 'El-Salvador', 'Trinadad&Tobago', 
                            'Peru', 'Hong', 'Holand-Netherlands']
     }
-    
+
+    #adjusting continuous cols
+    continuous_cols = ['age', 'fnlwgt', 'education.num', 'capital.gain', 'capital.loss', 'hours.per.week']
+    continuos_cols_drop = ['fnlwgt', 'capital.gain', 'capital.loss']
+
+    #binning age
+    age_bins = [0, 18, 25, 32, 42, 52, 64, 200]
+    age_labels = ['0-18', '19-25', '26-32', '33-42', '43-52', '53-64', '65+']
+    df_train['age'] = pd.cut(df_train['age'], bins=age_bins, labels=age_labels, right=False)
+    df_test['age'] = pd.cut(df_test['age'], bins=age_bins, labels=age_labels, right=False)
+    continuous_cols.remove('age')
+
+    #creating net capital column
+    df_train['net_capital'] = df_train['capital.gain'] - df_train['capital.loss']
+    df_test['net_capital'] = df_test['capital.gain'] - df_test['capital.loss']
+    continuous_cols.append('net_capital')
+
+    for col in continuos_cols_drop:
+        df_train.drop(col, axis=1, inplace=True)
+        df_test.drop(col, axis=1, inplace=True)
+        continuous_cols.remove(col)
+
+    target_enc_cols = ['native.country', 'education', 'occupation', 'age']
+
+    categorical_cols = list(categories.keys())
+    categorical_cols.append('age')
+
+    for col in target_enc_cols:
+        categorical_cols.remove(col)
+
+    target_col = 'income>50K'
+
+    #filling missing values with mode
     df_train.replace('?', np.nan, inplace=True)
 
     for col in df_train.columns[df_train.isnull().any()].tolist():
         df_train[col] = df_train[col].fillna(df_train[col].mode()[0])
-    
+
+    #target encoding
+    for col in target_enc_cols:
+        target_encoding = df_train.groupby(col)[target_col].mean()
+        df_train[col] = df_train[col].map(target_encoding)
+        df_test[col] = df_test[col].map(target_encoding)
+
+    #one hot encoding
     for col, cats in categories.items():
         df_train[col] = pd.Categorical(df_train[col], categories=cats)
         df_test[col] = pd.Categorical(df_test[col], categories=cats)
@@ -45,7 +87,7 @@ def preProcess(df_train, df_test):
     df_train_encoded = pd.get_dummies(df_train, columns=categorical_cols, drop_first=True)
     df_test_encoded = pd.get_dummies(df_test, columns=categorical_cols, drop_first=True)
 
-    continuous_cols = ['age', 'fnlwgt', 'education.num', 'capital.gain', 'capital.loss', 'hours.per.week']
+    #scaling continuous columns
     scaler = StandardScaler()
     
     df_train_encoded[continuous_cols] = scaler.fit_transform(df_train_encoded[continuous_cols])
